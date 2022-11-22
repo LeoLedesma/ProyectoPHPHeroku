@@ -2,75 +2,94 @@
 require_once './models/Usuario.php';
 require_once './interfaces/IApiUsable.php';
 
-class UsuarioController extends Usuario implements IApiUsable
+class UsuarioController implements IApiUsable
 {
-    public function CargarUno($request, $response, $args)
+   
+    function Alta($request, $response, $args)
     {
-        $parametros = $request->getParsedBody();
+        echo "entramos";
 
-        $usuario = $parametros['usuario'];
-        $clave = $parametros['clave'];
-
-        // Creamos el usuario
-        $usr = new Usuario();
-        $usr->usuario = $usuario;
-        $usr->clave = $clave;
-        $usr->crearUsuario();
-
-        $payload = json_encode(array("mensaje" => "Usuario creado con exito"));
-
-        $response->getBody()->write($payload);
-        return $response
-          ->withHeader('Content-Type', 'application/json');
+         $parametros = $request->getParsedBody();
+        
+        if ((isset($parametros['usuario']) && 
+            isset($parametros['contrasenia']) && 
+            isset($parametros['cod_tipo_usuario'])))
+        {
+            $nuevoUsuario = new Usuario();    
+            $nuevoUsuario->usuario = $parametros['usuario'];              
+            $nuevoUsuario->contrasenia = $parametros['contrasenia'];
+            $nuevoUsuario->cod_usuario = $parametros['cod_tipo_usuario'];
+            $id = $nuevoUsuario->alta();
+        
+            $payload = json_encode(array("mensaje" => "Usuario creado con exito. Id: ".$id));
+        } else {
+            $payload = json_encode(array("mensaje" => "Faltan datos"));
+        }    
+      
+          $response->getBody()->write($payload);
+          return $response->withHeader('Content-Type', 'application/json');
+    
     }
 
-    public function TraerUno($request, $response, $args)
-    {
-        // Buscamos usuario por nombre
-        $usr = $args['usuario'];
-        $usuario = Usuario::obtenerUsuario($usr);
-        $payload = json_encode($usuario);
-
-        $response->getBody()->write($payload);
-        return $response
-          ->withHeader('Content-Type', 'application/json');
-    }
-
-    public function TraerTodos($request, $response, $args)
+    function ObtenerTodos($request, $response, $args)
     {
         $lista = Usuario::obtenerTodos();
-        $payload = json_encode(array("listaUsuario" => $lista));
+        $payload = json_encode(array("Usuario" => $lista), JSON_PRETTY_PRINT);
 
-        $response->getBody()->write($payload);
-        return $response
-          ->withHeader('Content-Type', 'application/json');
+    $response->getBody()->write($payload);
+    return $response
+      ->withHeader('Content-Type', 'application/json');
     }
-    
-    public function ModificarUno($request, $response, $args)
+
+    function Baja($request, $response, $args)
     {
-        $parametros = $request->getParsedBody();
 
-        $nombre = $parametros['nombre'];
-        Usuario::modificarUsuario($nombre);
-
-        $payload = json_encode(array("mensaje" => "Usuario modificado con exito"));
-
-        $response->getBody()->write($payload);
-        return $response
-          ->withHeader('Content-Type', 'application/json');
     }
-
-    public function BorrarUno($request, $response, $args)
+    function Modificacion($request, $response, $args)
     {
-        $parametros = $request->getParsedBody();
 
-        $usuarioId = $parametros['usuarioId'];
-        Usuario::borrarUsuario($usuarioId);
-
-        $payload = json_encode(array("mensaje" => "Usuario borrado con exito"));
-
-        $response->getBody()->write($payload);
-        return $response
-          ->withHeader('Content-Type', 'application/json');
     }
+    function Borrar($request, $response, $args)
+    {
+
+    }
+
+    public function Login($request, $response)
+  {    
+    $parametros = $request->getParsedBody();
+
+    $usuario = $parametros['usuario'];
+    $contrasenia = $parametros['contrasenia'];    
+
+    if(isset($usuario) && isset($contrasenia))
+    {
+      $claims = Usuario::verificarDatos($usuario,$contrasenia);            
+      if ($claims != 0) {
+        $token = AutentificadorJWT::CrearToken($claims);
+        $payload = json_encode(array('OK' => $token));
+  
+        $response->getBody()->write($payload);
+        return $response->withStatus(200)
+          ->withHeader(
+            'Content-Type',
+            'application/json'
+          );  
+  
+      }else{      
+        $response->getBody()->write("El usuario no existe");
+      }
+
+    }else
+    {
+      $response->getBody()->write("Datos Invalidos");
+    }
+
+
+    return $response
+      ->withHeader(
+        'Content-Type',
+        'application/json'
+      );
+  }
+
 }
