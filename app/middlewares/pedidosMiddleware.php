@@ -19,13 +19,21 @@ class pedidosMiddleware{
                 $cod_usuario = AutentificadorJWT::ObtenerRol($request);            
                 $cod_prod = Pedido::obtenerCodTipoProducto($parametros["id_pedido"]);            
     
-                if(Producto::usuarioPuedeModificar($cod_prod,$cod_usuario)){
-                    $response = $handler->handle($request);
-                }
-                else{
-                    $payload = json_encode(array("ERROR" => "No estas autorizado"));
+                if($cod_prod!=false)
+                {
+                    if(Producto::usuarioPuedeModificar($cod_prod,$cod_usuario)){
+                        $response = $handler->handle($request);
+                    }
+                    else{
+                        $payload = json_encode(array("ERROR" => "No estas autorizado"));
+                        $response->getBody()->write($payload);
+                    }
+                }else
+                {
+                    $payload = json_encode(array("ERROR" => "Pedido no existente"));
                     $response->getBody()->write($payload);
                 }
+
             }else{
                 $payload = json_encode(array("ERROR" => "Faltan parametros"));
                 $response->getBody()->write($payload);

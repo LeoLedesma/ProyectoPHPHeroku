@@ -8,7 +8,8 @@ class PedidoController implements IApiUsable
     function Alta($request, $response, $args)
     {
         $parametros = $request->getParsedBody();
-        
+        $id_usuario = AutentificadorJWT::ObtenerUsuario($request);
+
         if ((isset($parametros['id_producto']) &&
             isset($parametros['id_mesa'])
             ))
@@ -16,7 +17,7 @@ class PedidoController implements IApiUsable
             $nuevoPedido = new Pedido();    
             $nuevoPedido->id_producto = $parametros['id_producto'];              
             $nuevoPedido->id_mesa = $parametros['id_mesa'];            
-            $id = $nuevoPedido->alta();
+            $id = $nuevoPedido->alta($id_usuario);
         
             $payload = json_encode(array("mensaje" => "Pedido creado con exito. Id: ".$id));
         } else {
@@ -48,6 +49,24 @@ class PedidoController implements IApiUsable
       ->withHeader('Content-Type', 'application/json');
     }
 
+    function ListosParaServir($request, $response, $args)
+    {
+        
+        $lista = Pedido::obtenerListos();
+        
+        $payload = json_encode(array("Pedido" => $lista), JSON_PRETTY_PRINT);
+
+    $response->getBody()->write($payload);
+    return $response
+      ->withHeader('Content-Type', 'application/json');
+    }
+
+
+
+
+
+
+
     function Baja($request, $response, $args)
     {
 
@@ -64,8 +83,8 @@ class PedidoController implements IApiUsable
     function ActualizarPedido($request, $response, $args)
     {
         $parametros = $request->getParsedBody();       
-        $idUsuario = AutentificadorJWT::ObtenerUsuario($request);        
-
+        $idUsuario = AutentificadorJWT::ObtenerUsuario($request);      
+      
         if(Pedido::actualizarPedido($parametros['id_pedido'],$idUsuario,$parametros['cod_estado_pedido'])){
 
             $payload = json_encode(array("mensaje" => "Pedido modificado con exito"));

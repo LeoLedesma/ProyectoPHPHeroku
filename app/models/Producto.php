@@ -1,5 +1,7 @@
 <?php
 
+include_once("ProductoDTO.php");
+
 
 class Producto{
     public $id_producto;
@@ -41,6 +43,15 @@ class Producto{
         return $consulta->fetchAll(PDO::FETCH_CLASS, 'Producto');
     }
 
+    static function obtenerTodosShort()
+    {        
+        $objAccesoDatos = AccesoDatos::obtenerInstancia();
+        $consulta = $objAccesoDatos->prepararConsulta("SELECT id_producto,txt_desc,precio,tiempo_est_preparacion, cod_producto, visible FROM mproductos");
+        $consulta->execute();        
+
+        return $consulta->fetchAll(PDO::FETCH_CLASS, 'ProductoDTO');
+    }
+
     static function obtenerTodosByTipoUsuario($cod_usuario)
     {
         $objAccesoDatos = AccesoDatos::obtenerInstancia();
@@ -51,24 +62,108 @@ class Producto{
         return $consulta->fetchAll(PDO::FETCH_CLASS, 'Producto');
     }
 
-    static function getTiempoPreparacion($id_producto)
+    public static function buscar($id_producto, $txt_desc)
     {
         $objAccesoDatos = AccesoDatos::obtenerInstancia();
-        $consulta = $objAccesoDatos->prepararConsulta("SELECT tiempo_est_preparacion FROM mproductos where id_producto = :id_producto");
-        $consulta->bindValue(':id_producto', $id_producto, PDO::PARAM_INT);
+        $consulta = $objAccesoDatos->prepararConsulta("SELECT 1 FROM mproductos where id_producto = :id_producto or txt_desc = :txt_desc");
+        $consulta->bindValue(':id_producto', $id_producto, PDO::PARAM_STR);
+        $consulta->bindValue(':txt_desc', $txt_desc, PDO::PARAM_STR);
+
+        $consulta->execute();
+
+        $result = $consulta->fetch();
+        return $result;
+    }
+
+    static function getTiempoPreparacion($id_pedido)
+    {
+        $objAccesoDatos = AccesoDatos::obtenerInstancia();
+        $consulta = $objAccesoDatos->prepararConsulta("SELECT tiempo_est_preparacion FROM mproductos where id_producto = (select id_producto FROM mpedidos where id_pedido = :id_pedido)");
+        $consulta->bindValue(':id_pedido', $id_pedido, PDO::PARAM_INT);
         $consulta->execute();
 
         return $consulta->fetch()['tiempo_est_preparacion'];
     }
 
     static function usuarioPuedeModificar($cod_producto,$cod_usuario)
-    {
+    {   
         $objAccesoDatos = AccesoDatos::obtenerInstancia();
-        $consulta = $objAccesoDatos->prepararConsulta('SELECT visible_cod_usuario from ttipo_producto');        
-        $consulta->execute();
-    
+        $consulta = $objAccesoDatos->prepararConsulta('SELECT visible_cod_usuario from ttipo_producto where cod_producto = :cod_producto');     
+        $consulta->bindValue(':cod_producto', $cod_producto, PDO::PARAM_INT);
+        $consulta->execute();    
         return $cod_usuario == $consulta->fetch()['visible_cod_usuario'];
     }  
+
+    static function leerArchivo($archivo)
+    {
+        $flag = false;
+        if(is_readable($archivo))
+        {        
+            $archivo = fopen($archivo, 'r');    
+        
+
+            while(!feof($archivo))
+             {                   
+                 if(($array = fgetcsv($archivo))!=false)
+                 {  
+
+                    
+                     $producto = new Producto();
+                    $producto->id_producto = $array[0];
+                    $producto->txt_desc = $array[1];
+                    $producto->cod_producto = $array[2];
+                    $producto->precio = $array[3];
+                    $producto->tiempo_est_preparacion = $array[4];                    
+                    $producto->visible = $array[5];                    
+
+                    if(!Producto::buscar($producto->id_producto, $producto->txt_desc)==1)
+                    {                        
+                        $producto->alta();
+                        $flag = true;
+                    }
+                }
+            }
+        }
+
+            if($flag)
+            {
+                return array("OK"=> "Se agregaron correctamente aquellos no existentes.");
+            }else
+            {
+                return array("OK" => "No se agrego ningun producto.");
+            }
+        
+    }
+
+    public static function getHtml($array)
+    {
+        if(!is_null($array) && is_array($array)) 
+      {
+        
+        $HTML = "<h1>Productos</h1>";                
+        
+        foreach($array as $producto)
+        {              
+            $HTML .= "<ul>";
+            $HTML .= "<li>".$producto->txt_desc."</li>";
+            $HTML .= "<li>".$producto->id_producto."</li>";
+            $HTML .= "<li>".$producto->cod_producto."</li>";           
+            $HTML .= "<li>".$producto->precio."</li>";
+            $HTML .= "<li>".$producto->tiempo_est_preparacion."</li>";
+            $HTML .= "<li>".($producto->visible ? "ACTIVO" : "INACTIVO")."</li>";
+            $HTML .= "</ul>";
+            $HTML .= "</br>";
+        }
+        
+      }
+
+      return $HTML;
+  }
+
+    
+
+   
+
 
     function suma_horas($hora1,$hora2){
  
@@ -108,6 +203,8 @@ class Producto{
     return ($sum_hrs);
  
     }
+
+    
 
     
 }

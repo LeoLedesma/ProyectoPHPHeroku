@@ -17,6 +17,8 @@ require_once './controllers/UsuarioController.php';
 require_once './controllers/ProductoController.php';
 require_once './controllers/MesaController.php';
 require_once './controllers/PedidoController.php';
+require_once './controllers/EncuestaController.php';
+
 
 require_once("./middlewares/socioCheckMiddleware.php");
 require_once("./middlewares/mozoCheckMiddleware.php");
@@ -50,21 +52,33 @@ $app->group('/usuarios', function (RouteCollectorProxy $group) {
 $app->group('/productos', function (RouteCollectorProxy $group) {
   $group->post('[/]', \ProductoController::class . ':Alta')->add(new socioCheckMiddleware()); //Solo socio
   $group->get('[/]', \ProductoController::class . ':ObtenerTodos')->add(new mozoCheckMiddleware()); //mozo y socio
+  $group->get('/Export', \ProductoController::class . ':ExportarTodos')->add(new socioCheckMiddleware()); //Solo socio
+  $group->get('/ExportPDF', \ProductoController::class . ':ExportarTodosPDF')->add(new socioCheckMiddleware()); //Solo socio
+  $group->post('/Import', \ProductoController::class . ':CargaMasiva')->add(new socioCheckMiddleware()); //Solo socio
 })->add(new jwtCheckMiddleware());   
 
 $app->group('/mesas', function (RouteCollectorProxy $group) {
   $group->post('[/]', \MesaController::class . ':Alta')->add(new mozoCheckMiddleware()); //mozo y socio
-  $group->get('[/]', \MesaController::class . ':ObtenerTodos')->add(new mozoCheckMiddleware()); //mozo y socio
+  $group->get('[/]', \MesaController::class . ':ObtenerTodos')->add(new mozoCheckMiddleware()); //mozo y socio  
+  $group->get('/PedirCuenta', \MesaController::class . ':PedirCuenta')->add(new mozoCheckMiddleware()); //mozo y socio 
+  $group->get('/CerrarMesa', \MesaController::class . ':CerrarMesa')->add(new socioCheckMiddleware()); //mozo y socio   
+  $group->get('/MejorMesa', \MesaController::class . ':MejorMesa')->add(new socioCheckMiddleware()); //mozo y socio   
 })->add(new jwtCheckMiddleware());
 
 $app->group('/pedidos', function (RouteCollectorProxy $group) {
   $group->post('[/]', \PedidoController::class . ':Alta')->add(new mozoCheckMiddleware()); //mozo y socio
   $group->post('/ActualizarPedido', \PedidoController::class . ':ActualizarPedido')->add(new pedidosMiddleware());
-  $group->get('[/]', \PedidoController::class . ':ObtenerTodos');    
+  $group->get('[/]', \PedidoController::class . ':ObtenerTodos'); 
+  $group->get('/listos', \PedidoController::class . ':ListosParaServir');   
 })->add(new jwtCheckMiddleware());   
 
+$app->group('/encuestas', function (RouteCollectorProxy $group) {
+  $group->get('[/]', \EncuestaController::class . ':CargarEncuesta');
+  $group->get('/MejoresEncuestas', \EncuestaController::class . ':MejoresEncuestas')->add(new socioCheckMiddleware)->add(new jwtCheckMiddleware());
+});
 
-
+$app->get('/ConsultarTiempoMesa', \MesaController::class . ':ConsultarTiempoMesa');
+$app->get('/ConsultarTiempoPedido', \MesaController::class . ':ConsultarTiempoPedido');
 $app->get('[/]', function (Request $request, Response $response) {    
     $response->getBody()->write("Slim Framework 4 PHP");
     return $response;
